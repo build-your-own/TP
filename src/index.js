@@ -11,43 +11,57 @@ class TP {
   constructor(fn) {
     this.errorObj = {};
     this.status = TPStatus.PANDING;
-    this.eventualValue = null;
+    this.value = null;
     this.reason = null
-    this.currentVal = null;
-    const argLen = fn.length;
-    if (argLen < 2) {
-      throw new Error('must provide resolve and reject function');
-    }
-    fn(this.resolve, this.reject);
+    fn(this.resolve.bind(this), this.reject.bind(this));
   }
 
   then(onFulfilled, onRejected) {
+    this.updateStatus(PANDING);
     if (typeof onFulfilled !== 'function') onFulfilled = () => {};
     if (onRejected && typeof onRejected !== 'function') onRejected = () => {};
-    onFulfilled()
+    this.updateValue(onFulfilled(this.value));
+    this.updateStatus(PANDING);
     return this;
   }
 
   catch(rejectFunc) {
-    const reason = rejectFunc();
+    this.updateReason(rejectFunc());
     return this;
   }
   
   resolve(value) {
-    this.status = FULFILLED;
-    this.eventualValue = value;
+    this.updateStatus(FULFILLED);
+    this.updateValue(value);
     return this;
   }
-
+  
   reject(err) {
-    this.status = FULFILLED;
-    this.reason = err;
+    this.updateStatus(FULFILLED);
+    this.updateReason(err);
     return this;
   }
 
-}
+  updateStatus(status) {
+    this.status = status;
+  }
 
-const tp = new TP();
+  updateValue(value) {
+    this.value = value;
+  }
+
+  updateReason(reason) {
+    this.reason = reason;
+  }
+
+  static resolve() {
+    this.resolve.call(this, ...this.arguments);
+  }
+
+  static reject() {
+    this.resolve.call(this, ...this.arguments);
+  }
+}
 
 const ajaxAsync = () => {
   return new TP((resolve, reject) => {
@@ -55,23 +69,12 @@ const ajaxAsync = () => {
   });
 }
 
-ajaxAsync().then((val) => {
-  console.log(val);
-});
-
-var func = function (value) {
-  return function () {
-    console.log(value);
-  }
-}
-
-var pp = function (fn) {
-  var a = fn[0];
-  a(299);
-}
-
-pp((val) => {
-
-});
+ajaxAsync()
+  .then((val) => {
+    console.log(val);
+  })
+  .then((val) => {
+    console.log(val)
+  })
 
 module.exports = TP;
