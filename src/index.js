@@ -7,21 +7,31 @@ const TPStatus = {
 
 const { PANDING, FULFILLED, REJECT } = TPStatus;
 
+
+var a = function (params) {
+  
+}
+
+a.once
+
 class TP {
   constructor(fn) {
     this.errorObj = {};
-    this.status = TPStatus.PANDING;
+    this.status = PANDING;
     this.value = null;
-    this.reason = null
+    this.reason = null;
+    this.thenFnQueue = [];
     fn(this.resolve.bind(this), this.reject.bind(this));
   }
 
   then(onFulfilled, onRejected) {
-    this.updateStatus(PANDING);
     if (typeof onFulfilled !== 'function') onFulfilled = () => {};
     if (onRejected && typeof onRejected !== 'function') onRejected = () => {};
+    if (this.status === PANDING) {
+      this.thenFnQueue.push(TP.prototype.then.bind(this, onFulfilled, onRejected));
+      return this;
+    };
     this.updateValue(onFulfilled(this.value));
-    this.updateStatus(PANDING);
     return this;
   }
 
@@ -33,6 +43,9 @@ class TP {
   resolve(value) {
     this.updateStatus(FULFILLED);
     this.updateValue(value);
+    this.thenFnQueue.forEach(fn => {
+      fn(this.value);
+    })
     return this;
   }
   
@@ -65,16 +78,22 @@ class TP {
 
 const ajaxAsync = () => {
   return new TP((resolve, reject) => {
-    resolve(200);
-  });
+    setTimeout(() => {
+      resolve(200);
+    }, 2000);
+  })
 }
 
-ajaxAsync()
+var tp1 = ajaxAsync()
   .then((val) => {
     console.log(val);
+    return val + 100;
+  }).then(val => {
+    return val + 200;
   })
-  .then((val) => {
-    console.log(val)
-  })
+
+var tp2 = tp1.then((val) => console.log(val));
+
+console.log(tp1 === tp2)
 
 module.exports = TP;
