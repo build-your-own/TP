@@ -77,8 +77,9 @@ class TP {
   }
   
   reject(err) {
-    this.updateStatus(FULFILLED);
+    this.updateStatus(REJECT);
     this.updateReason(err);
+    this.fnChain.forEach(fn => fn());
     return this;
   }
 
@@ -106,7 +107,7 @@ class TP {
 // const ajaxAsync = () => {
 //   return new TP((resolve, reject) => {
 //     setTimeout(() => {
-//       resolve(200);
+//       reject(200);
 //     }, 2000);
 //   })
 // }
@@ -114,7 +115,6 @@ class TP {
 // var tp1 = ajaxAsync()
 //   .then((val) => {
 //     console.log(val);
-//     throw new Error('test throw new error');
 //   }, (err) => {
 //     console.log(err);
 //   }).then(val => {

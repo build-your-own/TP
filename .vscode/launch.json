@@ -14,14 +14,14 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Test Official",
-      "program": "${workspaceFolder}/tests/official-promise.js"
+      "program": "${workspaceFolder}/test/official-promise.js"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Test TP",
       "runtimeExecutable": "${workspaceFolder}/node_modules/mocha/bin/mocha",
-      "program": "${workspaceFolder}/tests/index.js"
+      "program": "${workspaceFolder}/test/index.js"
     }
   ]
 }
