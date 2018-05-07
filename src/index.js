@@ -16,7 +16,8 @@ class TP {
     this.value = null;
     this.reason = null;
     this.fnChain = [];
-    fn(this.resolve.bind(this), this.reject.bind(this));
+    if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
+    if (fn && typeof fn === 'function') fn(this.resolve.bind(this), this.reject.bind(this));
   }
 
   then(onFulfilled, onRejected) {
@@ -102,33 +103,33 @@ class TP {
   }
 }
 
-const ajaxAsync = () => {
-  return new TP((resolve, reject) => {
-    setTimeout(() => {
-      resolve(200);
-    }, 2000);
-  })
-}
+// const ajaxAsync = () => {
+//   return new TP((resolve, reject) => {
+//     setTimeout(() => {
+//       resolve(200);
+//     }, 2000);
+//   })
+// }
 
-var tp1 = ajaxAsync()
-  .then((val) => {
-    console.log(val);
-    throw new Error('test throw new error');
-  }, (err) => {
-    console.log(err);
-  }).then(val => {
-    return val + 200;
-  }).catch(error => {
-    console.log('finally');
-    console.log(error);
-  })
-  .then(() => {
-    console.log('then function after catch');
-    return 'tp1 finally return this value';
-  })
+// var tp1 = ajaxAsync()
+//   .then((val) => {
+//     console.log(val);
+//     throw new Error('test throw new error');
+//   }, (err) => {
+//     console.log(err);
+//   }).then(val => {
+//     return val + 200;
+//   }).catch(error => {
+//     console.log('finally');
+//     console.log(error);
+//   })
+//   .then(() => {
+//     console.log('then function after catch');
+//     return 'tp1 finally return this value';
+//   })
 
-var tp2 = tp1.then((val) => console.log(val));
+// var tp2 = tp1.then((val) => console.log(val));
 
-console.log(tp1 === tp2);
+// console.log(tp1 === tp2);
 
 module.exports = TP;

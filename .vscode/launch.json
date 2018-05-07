@@ -7,13 +7,20 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Program",
+      "name": "Launch TP",
       "program": "${workspaceFolder}/src/index.js"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Test",
+      "name": "Launch Test Official",
+      "program": "${workspaceFolder}/tests/official-promise.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Test TP",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/mocha/bin/mocha",
       "program": "${workspaceFolder}/tests/index.js"
     }
   ]
