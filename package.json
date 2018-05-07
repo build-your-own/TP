@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/build-your-own/TP#readme",
   "dependencies": {
+    "babel-eslint": "^8.2.3",
     "eslint": "^4.19.1"
   }
 }
