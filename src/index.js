@@ -5,6 +5,8 @@ const TPStatus = {
   REJECT: 'rejected',
 };
 
+const noop = () => {};
+
 const { PANDING, FULFILLED, REJECT } = TPStatus;
 
 class TP {
@@ -13,15 +15,15 @@ class TP {
     this.status = PANDING;
     this.value = null;
     this.reason = null;
-    this.thenFnQueue = [];
+    this.fnChain = [];
     fn(this.resolve.bind(this), this.reject.bind(this));
   }
 
   then(onFulfilled, onRejected) {
-    if (typeof onFulfilled !== 'function') onFulfilled = () => {};
-    if (onRejected && typeof onRejected !== 'function') onRejected = () => {};
+    onFulfilled = onFulfilled || noop;
+    if (onRejected && typeof onRejected !== 'function') onRejected = noop;
     if (this.status === PANDING) {
-      this.thenFnQueue.push(TP.prototype.then.bind(this, onFulfilled, onRejected));
+      this.fnChain.push(TP.prototype.then.bind(this, onFulfilled, onRejected));
       return this;
     };
     if (this.status === REJECT) {
@@ -36,15 +38,21 @@ class TP {
     return this;
   }
 
-  catch(rejectFunc) {
-    this.updateReason(rejectFunc());
+  catch(onRejected) {
+    onRejected = onRejected || noop;
+    const { status } = this;
+    if (status === PANDING) {
+      this.fnChain.push(TP.prototype.catch.bind(this, onRejected));
+      return this;
+    }
+    this.updateReason(onRejected());
     return this;
   }
   
   resolve(value) {
     this.updateStatus(FULFILLED);
     this.updateValue(value);
-    this.thenFnQueue.forEach(fn => fn());
+    this.fnChain.forEach(fn => fn());
     return this;
   }
   
