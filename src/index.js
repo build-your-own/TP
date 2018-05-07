@@ -21,19 +21,37 @@ class TP {
 
   then(onFulfilled, onRejected) {
     onFulfilled = onFulfilled || noop;
-    if (onRejected && typeof onRejected !== 'function') onRejected = noop;
     if (this.status === PANDING) {
       this.fnChain.push(TP.prototype.then.bind(this, onFulfilled, onRejected));
       return this;
     };
     if (this.status === REJECT) {
-      onRejected(); // TODO
+      if (onRejected && typeof onRejected === 'function') {
+        try {
+          onRejected(this.reason);
+          this.updateStatus(FULFILLED); // 需要更新状态以保证之后的 then 可以正常执行
+        } catch (error) {
+          this.updateReason(error); // 如果在 handle 错误的时候报错了，则更新错误
+        }
+        return this;
+      } else {
+        return this; // 如果有错误 但是未提供 onRejected then，直接 return 接着顺着链条向下找能 handle 此错误的方法
+      }
     }
     try {
+      /**
+       * 如果 onFulfilled 里面有 throw 语句 如
+       * promise.then(() => { throw new Error('error') });
+       * 在这里 handle
+       * 同时在运行接下来的链条时，如果下一个是 catch 则 cath的 onRejected 的参数为 throw 的参数
+       * 如果下一个是then语句，同时 then 的 onRejected 不是一个 function，则 此 then 的 resolve 不执行，
+       * 直到找到了一个 catch，或者一个拥有 onRejected function 的 then，将此 error handle 之后，
+       * promise 链条就会继续正常执行
+       */
       this.updateValue(onFulfilled(this.value));
     } catch (error) {
       this.updateReason(error);
-      onRejected(error);
+      this.updateStatus(REJECT);
     }
     return this;
   }
@@ -45,7 +63,8 @@ class TP {
       this.fnChain.push(TP.prototype.catch.bind(this, onRejected));
       return this;
     }
-    this.updateReason(onRejected());
+    onRejected(this.reason);
+    this.updateStatus(FULFILLED);
     return this;
   }
   
@@ -95,7 +114,6 @@ var tp1 = ajaxAsync()
   .then((val) => {
     console.log(val);
     throw new Error('test throw new error');
-    return val + 100;
   }, (err) => {
     console.log(err);
   }).then(val => {
@@ -104,9 +122,13 @@ var tp1 = ajaxAsync()
     console.log('finally');
     console.log(error);
   })
+  .then(() => {
+    console.log('then function after catch');
+    return 'tp1 finally return this value';
+  })
 
 var tp2 = tp1.then((val) => console.log(val));
 
-console.log(tp1 === tp2)
+console.log(tp1 === tp2);
 
 module.exports = TP;

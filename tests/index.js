@@ -30,6 +30,7 @@ a
   console.log('then 5');
 }, (err) => {
   console.log(`then onReject reason ${err}`);
+  throw new Error('then 5 throw new error at onRejected function');
 })
 .then(val => {
   console.log('then 6');
