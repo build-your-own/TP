@@ -17,7 +17,15 @@ class TP {
     this.reason = null;
     this.fnChain = [];
     if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
-    if (fn && typeof fn === 'function') fn(this.resolve.bind(this), this.reject.bind(this));
+    if (fn && typeof fn === 'function') {
+      try {
+        fn(this.resolve.bind(this), this.reject.bind(this));   
+      } catch (error) {
+        if (this.status === FULFILLED) return this;
+        this._updateStatus(REJECT);
+        this._updateReason(error);
+      }
+    }
   }
 
   then(onFulfilled, onRejected) {
@@ -30,9 +38,9 @@ class TP {
       if (onRejected && typeof onRejected === 'function') {
         try {
           onRejected(this.reason);
-          this.updateStatus(FULFILLED); // 需要更新状态以保证之后的 then 可以正常执行
+          this._updateStatus(FULFILLED); // 需要更新状态以保证之后的 then 可以正常执行
         } catch (error) {
-          this.updateReason(error); // 如果在 handle 错误的时候报错了，则更新错误
+          this._updateReason(error); // 如果在 handle 错误的时候报错了，则更新错误
         }
         return this;
       } else {
@@ -49,10 +57,10 @@ class TP {
        * 直到找到了一个 catch，或者一个拥有 onRejected function 的 then，将此 error handle 之后，
        * promise 链条就会继续正常执行
        */
-      this.updateValue(onFulfilled(this.value));
+      this.__updateValue(onFulfilled(this.value));
     } catch (error) {
-      this.updateReason(error);
-      this.updateStatus(REJECT);
+      this._updateReason(error);
+      this._updateStatus(REJECT);
     }
     return this;
   }
@@ -66,39 +74,45 @@ class TP {
     }
     if (status === REJECT) {
       onRejected(this.reason);
-      this.updateStatus(FULFILLED);
+      this._updateStatus(FULFILLED);
     }
     return this;
   }
   
   resolve(value) {
-    this.updateStatus(FULFILLED);
-    this.updateValue(value);
+    this._updateStatus(FULFILLED);
+    this._updateValue(value);
     this.fnChain.forEach(fn => fn());
     return this;
   }
   
   reject(err) {
-    this.updateStatus(REJECT);
-    this.updateReason(err);
+    this._updateStatus(REJECT);
+    this._updateReason(err);
     this.fnChain.forEach(fn => fn());
     return this;
   }
 
-  updateStatus(status) {
+  _updateStatus(status) {
     this.status = status;
   }
 
-  updateValue(value) {
+  _updateValue(value) {
     this.value = value;
   }
 
-  updateReason(reason) {
+  _updateReason(reason) {
     this.reason = reason;
   }
 
-  static resolve() {
-    this.resolve.call(this, ...this.arguments);
+  static resolve(val) {
+    console.log(Object.prototype.toString.call(val))
+    if (val instanceof TP) return val;
+    if (typeof val === 'object' && val !== null && val.hasOwnProperty('then')) {
+      const then = val.then;
+      return new TP(then);
+    }
+    return new TP(resolve => resolve(val));
   }
 
   static reject() {
