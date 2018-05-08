@@ -64,8 +64,10 @@ class TP {
       this.fnChain.push(TP.prototype.catch.bind(this, onRejected));
       return this;
     }
-    onRejected(this.reason);
-    this.updateStatus(FULFILLED);
+    if (status === REJECT) {
+      onRejected(this.reason);
+      this.updateStatus(FULFILLED);
+    }
     return this;
   }
   
@@ -104,20 +106,24 @@ class TP {
   }
 }
 
-// const ajaxAsync = () => {
-//   return new TP((resolve, reject) => {
-//     setTimeout(() => {
-//       reject(200);
-//     }, 2000);
-//   })
-// }
+const ajaxAsync = () => {
+  return new TP((resolve, reject) => {
+    setTimeout(() => {
+      reject(200);
+    }, 2000);
+  })
+}
 
 // var tp1 = ajaxAsync()
 //   .then((val) => {
 //     console.log(val);
 //   }, (err) => {
 //     console.log(err);
-//   }).then(val => {
+//   })
+//   .catch(() => {
+//     console.log('catch');
+//   })
+//   .then(val => {
 //     return val + 200;
 //   }).catch(error => {
 //     console.log('finally');
