@@ -11,7 +11,6 @@ const { PANDING, FULFILLED, REJECT } = TPStatus;
 
 class TP {
   constructor(fn) {
-    this.errorObj = {};
     this.status = PANDING;
     this.value = null;
     this.reason = null;
@@ -57,7 +56,10 @@ class TP {
        * 直到找到了一个 catch，或者一个拥有 onRejected function 的 then，将此 error handle 之后，
        * promise 链条就会继续正常执行
        */
-      this.__updateValue(onFulfilled(this.value));
+      if (this.value instanceof TP) {
+        return this.value;
+      }
+      this._updateValue(onFulfilled(this.value));
     } catch (error) {
       this._updateReason(error);
       this._updateStatus(REJECT);
@@ -107,7 +109,7 @@ class TP {
 
   // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
   static resolve(val) {
-    console.log(Object.prototype.toString.call(val))
+    // console.log(Object.prototype.toString.call(val))
     if (val instanceof TP) return val;
     if (typeof val === 'object' && val !== null && val.hasOwnProperty('then')) {
       const then = val.then;
@@ -122,30 +124,68 @@ class TP {
   }
 
   static all(list) {
-    const resultVals = [];
+    const tempList = list;
+    let tpList = [];
     let isReject = false;
     let reason = null;
     if (list && typeof list[Symbol.iterator] === 'function') {
-      for (let index = 0; index < list.length; index++) {
-        const val = list[index];
+      for (let index = 0; index < tempList.length; index++) {
+        const val = tempList[index];
         if (val instanceof TP) {
-          if (val.status === FULFILLED) {
-            resultVals.push(val.value);
+          if (val.status === FULFILLED || val.status === PANDING) {
+            tpList.push(val);
           } else if (val.status === REJECT) {
             reason = val.reason;
             isReject = true;
             break;
           }
         } else {
-          resultVals.push(val);
+          tpList.push(TP.resolve(val));
         }
       }
     } else {
       throw new TypeError('argument must be implemented iterable protocol.');
     }
+
+    // tpList: [TP<Fulfilled>, TP<Panding>, TP<Fulfilled>, TP<Panding>]
+
+    function reduceTP(tpList) {
+      return tpList.reduce((a, b) => {
+        return TP.resolve(a).then(() => b);
+      })
+    }
+    
+    const finallyTP = reduceTP(tpList);
+
     if (isReject) return TP.reject(reason);
-    return TP.resolve(resultVals);
+    return TP.resolve(list[1]);
   }
 }
+
+var a = new TP((resolve) => {
+  setTimeout(() => {
+    resolve('aResolve');
+  }, 1000);
+});
+
+var b = new TP((resolve) => {
+  setTimeout(() => {
+    resolve('bResolve');
+  }, 2000);
+})
+
+a
+  .then((res) => {
+    return TP.resolve(b).then(bv => bv)
+  })
+  .then(res => {
+    console.log(res);
+  })
+
+// TP
+//   .all([2, a])
+//   .then((res) => {
+//     console.log(res);
+//   })
 
 module.exports = TP;
