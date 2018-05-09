@@ -105,6 +105,7 @@ class TP {
     this.reason = reason;
   }
 
+  // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
   static resolve(val) {
     console.log(Object.prototype.toString.call(val))
     if (val instanceof TP) return val;
@@ -115,41 +116,36 @@ class TP {
     return new TP(resolve => resolve(val));
   }
 
-  static reject() {
-    this.resolve.call(this, ...this.arguments);
+  // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Promise/reject
+  static reject(reason) {
+    return new TP((resolve, reject) => reject(reason));
+  }
+
+  static all(list) {
+    const resultVals = [];
+    let isReject = false;
+    let reason = null;
+    if (list && typeof list[Symbol.iterator] === 'function') {
+      for (let index = 0; index < list.length; index++) {
+        const val = list[index];
+        if (val instanceof TP) {
+          if (val.status === FULFILLED) {
+            resultVals.push(val.value);
+          } else if (val.status === REJECT) {
+            reason = val.reason;
+            isReject = true;
+            break;
+          }
+        } else {
+          resultVals.push(val);
+        }
+      }
+    } else {
+      throw new TypeError('argument must be implemented iterable protocol.');
+    }
+    if (isReject) return TP.reject(reason);
+    return TP.resolve(resultVals);
   }
 }
-
-const ajaxAsync = () => {
-  return new TP((resolve, reject) => {
-    setTimeout(() => {
-      reject(200);
-    }, 2000);
-  })
-}
-
-// var tp1 = ajaxAsync()
-//   .then((val) => {
-//     console.log(val);
-//   }, (err) => {
-//     console.log(err);
-//   })
-//   .catch(() => {
-//     console.log('catch');
-//   })
-//   .then(val => {
-//     return val + 200;
-//   }).catch(error => {
-//     console.log('finally');
-//     console.log(error);
-//   })
-//   .then(() => {
-//     console.log('then function after catch');
-//     return 'tp1 finally return this value';
-//   })
-
-// var tp2 = tp1.then((val) => console.log(val));
-
-// console.log(tp1 === tp2);
 
 module.exports = TP;
