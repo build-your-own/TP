@@ -56,10 +56,11 @@ class TP {
        * 直到找到了一个 catch，或者一个拥有 onRejected function 的 then，将此 error handle 之后，
        * promise 链条就会继续正常执行
        */
-      if (this.value instanceof TP) {
+      const finishVal = onFulfilled(this.value);
+      if (finishVal instanceof TP) {
         return this.value;
       }
-      this._updateValue(onFulfilled(this.value));
+      this._updateValue(finishVal);
     } catch (error) {
       this._updateReason(error);
       this._updateStatus(REJECT);
@@ -161,31 +162,5 @@ class TP {
     return TP.resolve(list[1]);
   }
 }
-
-var a = new TP((resolve) => {
-  setTimeout(() => {
-    resolve('aResolve');
-  }, 1000);
-});
-
-var b = new TP((resolve) => {
-  setTimeout(() => {
-    resolve('bResolve');
-  }, 2000);
-})
-
-a
-  .then((res) => {
-    return TP.resolve(b).then(bv => bv)
-  })
-  .then(res => {
-    console.log(res);
-  })
-
-// TP
-//   .all([2, a])
-//   .then((res) => {
-//     console.log(res);
-//   })
 
 module.exports = TP;
