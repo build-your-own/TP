@@ -15,6 +15,7 @@ class TP {
     this.value = null;
     this.reason = null;
     this.fnChain = [];
+    this.fnChainRunningIndex = 0;
     if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
     if (fn && typeof fn === 'function') {
       try {
@@ -28,9 +29,12 @@ class TP {
   }
 
   then(onFulfilled, onRejected) {
+    const _this = this;
     onFulfilled = onFulfilled || noop;
     if (this.status === PANDING) {
-      this.fnChain.push(TP.prototype.then.bind(this, onFulfilled, onRejected));
+      this.fnChain.push(function () {
+        return TP.prototype.then.call(this, onFulfilled, onRejected); 
+      });
       return this;
     };
     if (this.status === REJECT) {
@@ -58,7 +62,13 @@ class TP {
        */
       const finishVal = onFulfilled(this.value);
       if (finishVal instanceof TP) {
-        return this.value;
+        const traceFn = [].concat(this.fnChain);
+        traceFn.splice(0, this.fnChainRunningIndex + 1);
+        const finalFn = [].concat(finishVal.fnChain, traceFn).map(fn => {
+          return fn.bind(finishVal, onFulfilled, onRejected);
+        });
+        finishVal.fnChain = finalFn;
+        return finishVal;
       }
       this._updateValue(finishVal);
     } catch (error) {
@@ -85,14 +95,23 @@ class TP {
   resolve(value) {
     this._updateStatus(FULFILLED);
     this._updateValue(value);
-    this.fnChain.forEach(fn => fn());
+    // 执行的时候 执行一个then删除一个then
+    for (let index = 0; index < this.fnChain.length; index++) {
+      this._updateRunningIndex(index);
+      const fn = this.fnChain[index].bind(this);
+      const res = fn();
+      if (res instanceof TP && res !== this) return res;
+    }
     return this;
   }
   
   reject(err) {
     this._updateStatus(REJECT);
     this._updateReason(err);
-    this.fnChain.forEach(fn => fn());
+    this.fnChain.forEach((fn, index) => {
+      this._updateRunningIndex(index);
+      fn();
+    });
     return this;
   }
 
@@ -102,6 +121,10 @@ class TP {
 
   _updateValue(value) {
     this.value = value;
+  }
+
+  _updateRunningIndex(index) {
+    this.fnChainRunningIndex = index;
   }
 
   _updateReason(reason) {
@@ -129,38 +152,62 @@ class TP {
     let tpList = [];
     let isReject = false;
     let reason = null;
-    if (list && typeof list[Symbol.iterator] === 'function') {
-      for (let index = 0; index < tempList.length; index++) {
-        const val = tempList[index];
-        if (val instanceof TP) {
-          if (val.status === FULFILLED || val.status === PANDING) {
-            tpList.push(val);
-          } else if (val.status === REJECT) {
-            reason = val.reason;
-            isReject = true;
-            break;
-          }
-        } else {
-          tpList.push(TP.resolve(val));
-        }
-      }
-    } else {
-      throw new TypeError('argument must be implemented iterable protocol.');
-    }
+    const valList = [];
+    const a = list[0];
+    const b = list[1];
+    const tp = a.then((aVal) => {
+      valList.push(aVal);
+      return b.then((bVal) => {
+        valList.push(bVal);
+        return valList;
+      });
+    })
+    return tp
+    // if (list && typeof list[Symbol.iterator] === 'function') {
+    //   for (let index = 0; index < tempList.length; index++) {
+    //     const val = tempList[index];
+    //     if (val instanceof TP) {
+    //       if (val.status === FULFILLED || val.status === PANDING) {
+    //         tpList.push(val);
+    //       } else if (val.status === REJECT) {
+    //         reason = val.reason;
+    //         isReject = true;
+    //         break;
+    //       }
+    //     } else {
+    //       tpList.push(TP.resolve(val));
+    //     }
+    //   }
+    // } else {
+    //   throw new TypeError('argument must be implemented iterable protocol.');
+    // }
 
-    // tpList: [TP<Fulfilled>, TP<Panding>, TP<Fulfilled>, TP<Panding>]
+    // // tpList: [TP<Fulfilled>, TP<Panding>, TP<Fulfilled>, TP<Panding>]
 
-    function reduceTP(tpList) {
-      return tpList.reduce((a, b) => {
-        return TP.resolve(a).then(() => b);
-      })
-    }
-    
-    const finallyTP = reduceTP(tpList);
+    // const finallyTP = reduceTP(tpList);
 
-    if (isReject) return TP.reject(reason);
-    return TP.resolve(list[1]);
+    // if (isReject) return TP.reject(reason);
+    // return TP.resolve(list[1]);
   }
 }
+
+var a = new TP((resolve) => {
+  setTimeout(() => {
+    resolve('a resolved');
+  }, 1000);
+})
+
+var b = new TP((resolve) => {
+  setTimeout(() => {
+    resolve('b resolved');
+  }, 1000);
+})
+
+var tpall = TP.all([a, b]);
+
+tpall
+  .then(res => {
+    console.log(res)
+  })
 
 module.exports = TP;
