@@ -1,11 +1,5 @@
-
-const TPStatus = {
-  PANDING: 'panding',
-  FULFILLED: 'fulfilled',
-  REJECT: 'rejected',
-};
-
-const noop = () => {};
+const once = require('../utils/once');
+const { TPStatus, noop } = require('./constants');
 
 const { PANDING, FULFILLED, REJECT } = TPStatus;
 
@@ -15,7 +9,7 @@ class TP {
     this.value = null;
     this.reason = null;
     this.fnChain = [];
-    this.fnChainRunningIndex = 0;
+    this.fnChainRunningIndex = 0; // 用于统计当前执行过的then() 用以方便 then chain 的转移
     if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
     if (fn && typeof fn === 'function') {
       try {
@@ -29,12 +23,11 @@ class TP {
   }
 
   then(onFulfilled, onRejected) {
-    const _this = this;
     onFulfilled = onFulfilled || noop;
     if (this.status === PANDING) {
-      this.fnChain.push(function () {
-        return TP.prototype.then.call(this, onFulfilled, onRejected); 
-      });
+      this.fnChain.push(once(function () {
+        return TP.prototype.then.call(this, onFulfilled, onRejected); // CAN NOT bind a function twice. binded function can not be changed context.
+      }));
       return this;
     };
     if (this.status === REJECT) {
@@ -52,6 +45,7 @@ class TP {
     }
     try {
       /**
+       * 对于 Promise 运行时 错误的处理：
        * 如果 onFulfilled 里面有 throw 语句 如
        * promise.then(() => { throw new Error('error') });
        * 在这里 handle
@@ -92,10 +86,14 @@ class TP {
     return this;
   }
   
+  /**
+   * resolve function, called in constructor
+   * @param {any} value 
+   */
   resolve(value) {
     this._updateStatus(FULFILLED);
     this._updateValue(value);
-    // 执行的时候 执行一个then删除一个then
+
     for (let index = 0; index < this.fnChain.length; index++) {
       this._updateRunningIndex(index);
       const fn = this.fnChain[index].bind(this);
@@ -147,67 +145,76 @@ class TP {
     return new TP((resolve, reject) => reject(reason));
   }
 
-  static all(list) {
-    const tempList = list;
-    let tpList = [];
+  /**
+   * 对 list 做筛选操作 如果有 TP<Rejected> 直接返回异常
+   * @param {array<any>} list 
+   * @return { isRejected: boolean, reason: any, formatList: any[] }
+   */
+  formatTPList(list) {
+    let formatList = [];
     let isReject = false;
     let reason = null;
+
+    if (list && typeof list[Symbol.iterator] === 'function') {
+      for (let index = 0, len = list.length; index < len; index++) {
+        const val = list[index];
+        if (val instanceof TP) {
+          if (val.status === FULFILLED || val.status === PANDING) {
+            formatList.push(val);
+          } else if (val.status === REJECT) {
+            reason = val.reason;
+            isReject = true;
+            break;
+          }
+        } else {
+          formatList.push(TP.resolve(val));
+        }
+      }
+    } else {
+      throw new TypeError('argument must be implemented iterable protocol.');
+    }
+
+    return { isReject, reason, formatList };
+
+  }
+
+  /**
+   * implement Promise.all
+   * the param list might be:
+   * [TP<FulFilled>, TP<Rejected>, TP<Panding>, undefined, 2, 'string', null, [], [object Object], etc.]
+   * @param {array} list
+   * @return {TP}
+   */
+  static all(list) {
     const valList = [];
-    const a = list[0];
-    const b = list[1];
-    const tp = a.then((aVal) => {
-      valList.push(aVal);
-      return b.then((bVal) => {
-        valList.push(bVal);
-        return valList;
+
+    const formatRes = TP.prototype.formatTPList(list);
+
+    const { isReject, reason, formatList } = formatRes;
+
+    if (isReject) return Promise.reject(reason);
+
+    const tp = formatList.reduce((a, b) => {
+      return a.then((val) => {
+        valList.push(val);
+        return b;
       });
-    })
-    return tp
-    // if (list && typeof list[Symbol.iterator] === 'function') {
-    //   for (let index = 0; index < tempList.length; index++) {
-    //     const val = tempList[index];
-    //     if (val instanceof TP) {
-    //       if (val.status === FULFILLED || val.status === PANDING) {
-    //         tpList.push(val);
-    //       } else if (val.status === REJECT) {
-    //         reason = val.reason;
-    //         isReject = true;
-    //         break;
-    //       }
-    //     } else {
-    //       tpList.push(TP.resolve(val));
-    //     }
-    //   }
-    // } else {
-    //   throw new TypeError('argument must be implemented iterable protocol.');
-    // }
+    }, TP.resolve());
 
-    // // tpList: [TP<Fulfilled>, TP<Panding>, TP<Fulfilled>, TP<Panding>]
+    return tp.then((val) => {
+      valList.push(val);
+      valList.splice(0, 1);
+      return valList;
+    });
+  }
 
-    // const finallyTP = reduceTP(tpList);
+  /**
+   * TODO
+   * implement Promise.race
+   */
+  static race(list) {
 
-    // if (isReject) return TP.reject(reason);
-    // return TP.resolve(list[1]);
   }
 }
-
-var a = new TP((resolve) => {
-  setTimeout(() => {
-    resolve('a resolved');
-  }, 1000);
-})
-
-var b = new TP((resolve) => {
-  setTimeout(() => {
-    resolve('b resolved');
-  }, 1000);
-})
-
-var tpall = TP.all([a, b]);
-
-tpall
-  .then(res => {
-    console.log(res)
-  })
 
 module.exports = TP;
