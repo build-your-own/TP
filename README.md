@@ -8,7 +8,7 @@ Implement the *Promise A+ Spec*. But `all()` and `race` are builted by my mind, 
 
 ## Usage
 
-some as `Promise`.
+Same as official `Promise` API.
 
 ```
 const TP = require('TP');
