@@ -6,6 +6,23 @@ tiny + promise = TP
 
 Implement the *Promise A+ Spec*. But `all()` and `race` are builted by my mind, not follow the *ECMAScript 2015 Spec*.
 
+## Usage
+
+some as `Promise`.
+
+```
+const TP = require('TP');
+
+const tp = new TP((resolve, reject) => {
+  setTimeout(() => {
+    resolve('done!');
+  }, 100);
+});
+
+tp.then(res => {
+  console.log(res) // done!
+});
+```
 
 ## Spec
 
