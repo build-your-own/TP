@@ -150,7 +150,7 @@ class TP {
    * @param {array<any>} list 
    * @return { isRejected: boolean, reason: any, formatList: any[] }
    */
-  formatTPList(list) {
+  _formatTPList(list) {
     let formatList = [];
     let isReject = false;
     let reason = null;
@@ -187,12 +187,10 @@ class TP {
    */
   static all(list) {
     const valList = [];
-
-    const formatRes = TP.prototype.formatTPList(list);
-
+    const formatRes = TP.prototype._formatTPList(list);
     const { isReject, reason, formatList } = formatRes;
 
-    if (isReject) return Promise.reject(reason);
+    if (isReject) return TP.reject(reason);
 
     const tp = formatList.reduce((a, b) => {
       return a.then((val) => {
@@ -213,8 +211,61 @@ class TP {
    * implement Promise.race
    */
   static race(list) {
+    const formatRes = TP.prototype._formatTPList(list);
+    const { isReject, reason, formatList } = formatRes;
+    if (isReject) return TP.reject(reason);
+    const resolvedTP = list.filter(tp => tp.status === FULFILLED);
+    if (resolvedTP.length) return TP.resolve(resolvedTP[0]);
+    const startTimestamp = new Date().getTime();
+    let durations = [];
+    const tp = formatList.reduce((a, b) => {
+      return a.then(res => {
+        const rightnow = new Date().getTime();
+        durations.push({
+          duration: rightnow - startTimestamp,
+          value: res,
+        });
+        return b;
+      });
+    }, TP.resolve());
 
+    return tp
+      .then(res => {
+        const rightnow = new Date().getTime();
+        durations.push({
+          duration: rightnow - startTimestamp,
+          value: res,
+        });
+      })
+      .then(() => {
+        console.log('finally');
+        durations.splice(0, 1);
+        const fastValue = durations.sort((a, b) => {
+          return a.duration - b.duration;
+        });
+        return fastValue[0].value;
+      });
   }
 }
+
+var a = new TP(resolve => {
+  setTimeout(() => {
+    console.log('a done');
+    resolve('a');
+  }, 6000);
+})
+
+var b = new TP(resolve => {
+  setTimeout(() => {
+    console.log('b done');
+    resolve('b');
+  }, 3000);
+})
+
+TP
+.race([a, b])
+.then(res => {
+  console.log(res);
+})
 
 module.exports = TP;
