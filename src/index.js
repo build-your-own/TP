@@ -225,7 +225,7 @@ class TP {
           duration: rightnow - startTimestamp,
           value: res,
         });
-        return b;
+        return b; // bug: 如果b先执行完了 则不会有任何输出
       });
     }, TP.resolve());
 
