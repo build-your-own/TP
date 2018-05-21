@@ -9,6 +9,8 @@ class TP {
     this.value = null;
     this.reason = null;
     this.fnChain = [];
+    this.duration = 0; // 在实现 race 的时候 不能并行执行，同时也不能准确的知道之前已经通过 new TP 定义好的 tp 的 duration 暂时处理方法就是在此处来记录
+    this.startTimestamp = new Date().getTime();
     this.fnChainRunningIndex = 0; // 用于统计当前执行过的then() 用以方便 then chain 的转移
     if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
     if (fn && typeof fn === 'function') {
@@ -93,12 +95,18 @@ class TP {
   resolve(value) {
     this._updateStatus(FULFILLED);
     this._updateValue(value);
-
+    if (this.duration === 0) this._updateDuration();
     for (let index = 0; index < this.fnChain.length; index++) {
       this._updateRunningIndex(index);
       const fn = this.fnChain[index].bind(this);
       const res = fn();
-      if (res instanceof TP && res !== this) return res;
+      if (res instanceof TP && res !== this) {
+        if (res.status === FULFILLED) {
+          res.resolve(res.value);
+        } else {
+          return res;
+        }
+      }
     }
     return this;
   }
@@ -117,6 +125,11 @@ class TP {
     this.status = status;
   }
 
+  _updateDuration() {
+    const duration = new Date().getTime() - this.startTimestamp;
+    this.duration = duration;
+  }
+
   _updateValue(value) {
     this.value = value;
   }
@@ -133,7 +146,7 @@ class TP {
   static resolve(val) {
     // console.log(Object.prototype.toString.call(val))
     if (val instanceof TP) return val;
-    if (typeof val === 'object' && val !== null && val.hasOwnProperty('then')) {
+    if (typeof val === 'object' && val !== null && val.hasOwnProperty('then')) { // polyfill { then: function() {} }
       const then = val.then;
       return new TP(then);
     }
@@ -214,58 +227,19 @@ class TP {
     const formatRes = TP.prototype._formatTPList(list);
     const { isReject, reason, formatList } = formatRes;
     if (isReject) return TP.reject(reason);
-    const resolvedTP = list.filter(tp => tp.status === FULFILLED);
+    const resolvedTP = formatList.filter(tp => tp.status === FULFILLED);
     if (resolvedTP.length) return TP.resolve(resolvedTP[0]);
-    const startTimestamp = new Date().getTime();
-    let durations = [];
     const tp = formatList.reduce((a, b) => {
-      return a.then(res => {
-        const rightnow = new Date().getTime();
-        durations.push({
-          duration: rightnow - startTimestamp,
-          value: res,
-        });
-        return b; // bug: 如果b先执行完了 则不会有任何输出
-      });
+      return a.then(() => b);
     }, TP.resolve());
 
     return tp
-      .then(res => {
-        const rightnow = new Date().getTime();
-        durations.push({
-          duration: rightnow - startTimestamp,
-          value: res,
-        });
-      })
       .then(() => {
-        console.log('finally');
-        durations.splice(0, 1);
-        const fastValue = durations.sort((a, b) => {
+        return list.sort((a, b) => {
           return a.duration - b.duration;
-        });
-        return fastValue[0].value;
+        })[0].value;
       });
   }
 }
-
-var a = new TP(resolve => {
-  setTimeout(() => {
-    console.log('a done');
-    resolve('a');
-  }, 6000);
-})
-
-var b = new TP(resolve => {
-  setTimeout(() => {
-    console.log('b done');
-    resolve('b');
-  }, 3000);
-})
-
-TP
-.race([a, b])
-.then(res => {
-  console.log(res);
-})
 
 module.exports = TP;

@@ -203,3 +203,66 @@ describe('Test catch() function', () => {
 
 });
 
+describe('Test all() function', () => {
+  it('test all arguments type', () => {
+    // TODO
+  });
+
+  it('test all() with wrong argument', () => {
+    // TODO
+  });
+
+  it('test all() with reject TP', () => {
+    // TODO
+  });
+
+  it('test all() with resolved TP', () => {
+    // TODO
+  });
+
+  it('test all() with original type argument', () => {
+    // TODO
+  });
+
+  it('all() should return an array contains the two async TP\'s result', (done) => {
+    const actualVal = ['a', 'b'];
+    const a = new TP((resolve) => {
+      setTimeout(() => {
+        resolve(actualVal[0]);
+      }, 1000);
+    });
+    const b = new TP((resolve) => {
+      setTimeout(() => {
+        resolve(actualVal[1]);
+      }, 2000);
+    });
+    TP.all([a, b]).then(vals => {
+      expect(vals).to.have.ordered.members(actualVal);
+      done();
+    })
+  }).timeout(4000);
+});
+
+describe('Test race() function', () => {
+  it('test race() with resolved TP', () => {
+    // TODO
+  });
+
+  it('race() should the fastest TP\'s value', (done) => {
+    const actualVal = ['a', 'b'];
+    const a = new TP((resolve) => {
+      setTimeout(() => {
+        resolve(actualVal[0]);
+      }, 1000);
+    });
+    const b = new TP((resolve) => {
+      setTimeout(() => {
+        resolve(actualVal[1]);
+      }, 2000);
+    });
+    TP.race([a, b]).then(val => {
+      expect(val).to.equal(actualVal[0]).not.to.equal(actualVal[1]);
+      done();
+    })
+  }).timeout(4000);
+});
