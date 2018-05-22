@@ -1,6 +1,9 @@
 # TP
 
-tiny + promise = TP
+[![Build Status](https://travis-ci.org/build-your-own/TP.svg?branch=master)](https://travis-ci.org/build-your-own/TP)
+[![codecov](https://codecov.io/gh/build-your-own/tp/branch/master/graph/badge.svg)](https://codecov.io/gh/build-your-own/tp)
+
+tiny + promise = TP 
 
 ## describe
 
