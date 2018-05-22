@@ -1,4 +1,5 @@
 {
+    "extends": "airbnb-base",
     "parser": "babel-eslint",
     "plugins": [
         "mocha"
@@ -7,7 +8,7 @@
         "browser": true,
         "commonjs": true,
         "es6": true,
-        "node": true
+        "node": true 
     },
     "parserOptions": {
         "ecmaFeatures": {
@@ -22,6 +23,7 @@
         "no-unreachable": "warn",
         "no-unused-vars": "warn",
         "constructor-super": "warn",
-        "valid-typeof": "warn"
+        "valid-typeof": "warn",
+        "no-underscore-dangle": 0
     }
 }

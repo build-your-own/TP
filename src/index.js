@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this,no-param-reassign */
 const once = require('../utils/once');
 const { TPStatus, noop } = require('./constants');
 
@@ -9,13 +10,14 @@ class TP {
     this.value = null;
     this.reason = null;
     this.fnChain = [];
-    this.duration = 0; // 在实现 race 的时候 不能并行执行，同时也不能准确的知道之前已经通过 new TP 定义好的 tp 的 duration 暂时处理方法就是在此处来记录
+    // 在实现 race 的时候 不能并行执行，同时也不能准确的知道之前已经通过 new TP 定义好的 tp 的 duration 暂时处理方法就是在此处来记录
+    this.duration = 0;
     this.startTimestamp = new Date().getTime();
     this.fnChainRunningIndex = 0; // 用于统计当前执行过的then() 用以方便 then chain 的转移
     if (!fn || typeof fn !== 'function') throw new TypeError('must provide a function argument for TP constructor.');
     if (fn && typeof fn === 'function') {
       try {
-        fn(this.resolve.bind(this), this.reject.bind(this));   
+        fn(this.resolve.bind(this), this.reject.bind(this));
       } catch (error) {
         if (this.status === FULFILLED) return this;
         this._updateStatus(REJECT);
@@ -27,11 +29,10 @@ class TP {
   then(onFulfilled, onRejected) {
     onFulfilled = onFulfilled || noop;
     if (this.status === PANDING) {
-      this.fnChain.push(once(function () {
-        return TP.prototype.then.call(this, onFulfilled, onRejected); // CAN NOT bind a function twice. binded function can not be changed context.
-      }));
+      // CAN NOT bind a function twice. binded function can not be changed context.
+      this.fnChain.push(once(() => TP.prototype.then.call(this, onFulfilled, onRejected)));
       return this;
-    };
+    }
     if (this.status === REJECT) {
       if (onRejected && typeof onRejected === 'function') {
         try {
@@ -41,9 +42,8 @@ class TP {
           this._updateReason(error); // 如果在 handle 错误的时候报错了，则更新错误
         }
         return this;
-      } else {
-        return this; // 如果有错误 但是未提供 onRejected then，直接 return 接着顺着链条向下找能 handle 此错误的方法
       }
+      return this; // 如果有错误 但是未提供 onRejected then，直接 return 接着顺着链条向下找能 handle 此错误的方法
     }
     try {
       /**
@@ -60,9 +60,8 @@ class TP {
       if (finishVal instanceof TP) {
         const traceFn = [].concat(this.fnChain);
         traceFn.splice(0, this.fnChainRunningIndex + 1);
-        const finalFn = [].concat(finishVal.fnChain, traceFn).map(fn => {
-          return fn.bind(finishVal, onFulfilled, onRejected);
-        });
+        const finalFn = [].concat(finishVal.fnChain, traceFn)
+          .map(fn => fn.bind(finishVal, onFulfilled, onRejected));
         finishVal.fnChain = finalFn;
         return finishVal;
       }
@@ -87,16 +86,16 @@ class TP {
     }
     return this;
   }
-  
+
   /**
    * resolve function, called in constructor
-   * @param {any} value 
+   * @param {any} value
    */
   resolve(value) {
     this._updateStatus(FULFILLED);
     this._updateValue(value);
     if (this.duration === 0) this._updateDuration();
-    for (let index = 0; index < this.fnChain.length; index++) {
+    for (let index = 0; index < this.fnChain.length; index += 1) {
       this._updateRunningIndex(index);
       const fn = this.fnChain[index].bind(this);
       const res = fn();
@@ -110,7 +109,7 @@ class TP {
     }
     return this;
   }
-  
+
   reject(err) {
     this._updateStatus(REJECT);
     this._updateReason(err);
@@ -146,8 +145,8 @@ class TP {
   static resolve(val) {
     // console.log(Object.prototype.toString.call(val))
     if (val instanceof TP) return val;
-    if (typeof val === 'object' && val !== null && val.hasOwnProperty('then')) { // polyfill { then: function() {} }
-      const then = val.then;
+    if (typeof val === 'object' && val !== null && val.then) { // polyfill { then: function() {} }
+      const { then } = val;
       return new TP(then);
     }
     return new TP(resolve => resolve(val));
@@ -160,21 +159,22 @@ class TP {
 
   /**
    * 对 list 做筛选操作 如果有 TP<Rejected> 直接返回异常
-   * @param {array<any>} list 
+   * @param {array<any>} list
    * @return { isRejected: boolean, reason: any, formatList: any[] }
    */
   _formatTPList(list) {
-    let formatList = [];
+    const formatList = [];
     let isReject = false;
     let reason = null;
 
     if (list && typeof list[Symbol.iterator] === 'function') {
-      for (let index = 0, len = list.length; index < len; index++) {
+      for (let index = 0, len = list.length; index < len; index += 1) {
         const val = list[index];
         if (val instanceof TP) {
           if (val.status === FULFILLED || val.status === PANDING) {
             formatList.push(val);
           } else if (val.status === REJECT) {
+            // eslint-disable-next-line prefer-destructuring
             reason = val.reason;
             isReject = true;
             break;
@@ -188,13 +188,12 @@ class TP {
     }
 
     return { isReject, reason, formatList };
-
   }
 
   /**
    * implement Promise.all
    * the param list might be:
-   * [TP<FulFilled>, TP<Rejected>, TP<Panding>, undefined, 2, 'string', null, [], [object Object], etc.]
+   * [TP<FulFilled>, TP<Rejected>, TP<Panding>, undefined, 2, 'string', [], [object Object], etc.]
    * @param {array} list
    * @return {TP}
    */
@@ -205,12 +204,10 @@ class TP {
 
     if (isReject) return TP.reject(reason);
 
-    const tp = formatList.reduce((a, b) => {
-      return a.then((val) => {
-        valList.push(val);
-        return b;
-      });
-    }, TP.resolve());
+    const tp = formatList.reduce((a, b) => a.then((val) => {
+      valList.push(val);
+      return b;
+    }), TP.resolve());
 
     return tp.then((val) => {
       valList.push(val);
@@ -229,16 +226,10 @@ class TP {
     if (isReject) return TP.reject(reason);
     const resolvedTP = formatList.filter(tp => tp.status === FULFILLED);
     if (resolvedTP.length) return TP.resolve(resolvedTP[0]);
-    const tp = formatList.reduce((a, b) => {
-      return a.then(() => b);
-    }, TP.resolve());
+    const tp = formatList.reduce((a, b) => a.then(() => b), TP.resolve());
 
     return tp
-      .then(() => {
-        return list.sort((a, b) => {
-          return a.duration - b.duration;
-        })[0].value;
-      });
+      .then(() => list.sort((a, b) => a.duration - b.duration)[0].value);
   }
 }
 
