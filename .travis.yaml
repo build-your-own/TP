@@ -4,7 +4,6 @@ node_js:
   - "8"
 cache: yarn
 before_install:
-  export CODECOV_TOKEN="3605c2f7-8ab2-4992-99dd-4ca0a9b4ee80"
   npm install codecov -g
 notifications:
   email:
