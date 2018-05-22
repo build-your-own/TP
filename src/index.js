@@ -30,7 +30,9 @@ class TP {
     onFulfilled = onFulfilled || noop;
     if (this.status === PANDING) {
       // CAN NOT bind a function twice. binded function can not be changed context.
-      this.fnChain.push(once(() => TP.prototype.then.call(this, onFulfilled, onRejected)));
+      this.fnChain.push(once(function () {
+        return TP.prototype.then.call(this, onFulfilled, onRejected);
+      }));
       return this;
     }
     if (this.status === REJECT) {
