@@ -7,7 +7,7 @@ tiny + promise = TP
 
 ## describe
 
-Implement the *Promise A+ Spec*. But `all()` and `race` are builted by my mind, not follow the *ECMAScript 2015 Spec*.
+Implement the *Promise A+ Spec*. But `all()` and `race` are builted by myself and might have some problem.
 
 ## Usage
 
