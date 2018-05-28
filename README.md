@@ -9,7 +9,7 @@ tiny + promise = TP
 
 ## describe
 
-Implement the *Promise A+ Spec*. But `all()` and `race` are builted by myself and might have some problem.
+Implement the *Promise A+ Spec*. But `all()` and `race` are builted by myself and did not fit the proposed spec.
 
 ## Usage
 
