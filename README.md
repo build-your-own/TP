@@ -1,13 +1,15 @@
-# TP
+# TP 
+
+![logo](https://image.ibb.co/fOkv0o/Dot_A_Town_Portal_Scroll.jpg)
 
 [![Build Status](https://travis-ci.org/build-your-own/TP.svg?branch=master)](https://travis-ci.org/build-your-own/TP)
 [![codecov](https://codecov.io/gh/build-your-own/tp/branch/master/graph/badge.svg)](https://codecov.io/gh/build-your-own/tp)
 
-tiny + promise = TP 
+tiny + promise = TP
 
 ## describe
 
-Implement the *Promise A+ Spec*. But `all()` and `race` are builted by my mind, not follow the *ECMAScript 2015 Spec*.
+Implement the *Promise A+ Spec*. But `all()` and `race` are builted by myself and did not fit [the proposed spec](https://pawelgrzybek.com/whats-new-in-ecmascript-2017/).
 
 ## Usage
 
