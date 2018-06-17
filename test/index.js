@@ -1,16 +1,14 @@
-/*eslint-env mocha */
+/* eslint-env mocha */
 const chai = require('chai');
+const TP = require('../src');
 
 const { expect } = chai;
-
-const TP = require('../src');
 const noop = () => {};
 
 describe('Test TP constructor', () => {
   it('Test tp constructor without argument', () => {
     const genTP = () => new TP();
     expect(genTP).to.throw('must provide a function argument for TP constructor.');
-
   });
 
   it('Test tp constructor argument isn\'t function type', () => {
@@ -19,7 +17,7 @@ describe('Test TP constructor', () => {
   });
 
   it('Test tp chain, promise1 === promise2', () => {
-    const tp1 = new TP((resolve) => resolve());
+    const tp1 = new TP(resolve => resolve());
     const tp2 = tp1.then();
     const tp3 = tp1.catch();
     expect(tp1).to.equal(tp2);
@@ -31,27 +29,27 @@ describe('Test TP constructor', () => {
 describe('Test then() function', () => {
   it('then() function first argument shoudle equal to resolve() return', (done) => {
     const expectVal = 200;
-    const tp = new TP((resolve) => resolve(expectVal));
-    tp.then(val => {
+    const tp = new TP(resolve => resolve(expectVal));
+    tp.then((val) => {
       expect(val).to.equal(expectVal);
       done();
-    })
+    });
   });
 
   it('if behind then() without return, after then() argument should be undefined', (done) => {
     const expectVal = 200;
-    const tp = new TP((resolve) => resolve(expectVal));
+    const tp = new TP(resolve => resolve(expectVal));
     tp
       .then()
-      .then(val => {
+      .then((val) => {
         expect(val).to.equal(undefined);
         done();
-      })
+      });
   });
 
   it('\'then chain\' with three then() function, last function should equal to the second to last val', (done) => {
     const expectVal = 200;
-    const tp = new TP((resolve) => resolve(expectVal));
+    const tp = new TP(resolve => resolve(expectVal));
     tp
       .then(() => {})
       .then(() => expectVal)
@@ -67,13 +65,13 @@ describe('Test then() function', () => {
     tp.then(noop, (errorMsg) => {
       expect(errorMsg).to.equal(actualError);
       done();
-    })
+    });
   });
 
   it('then(onFulfilled, onRejected): onRejected should handle above then() function\'s onFulfilled error', (done) => {
     const actualError = new Error('reject error');
-    const tp = new TP((resolve) => resolve());
-    
+    const tp = new TP(resolve => resolve());
+
     tp
       .then(() => {
         throw actualError;
@@ -86,8 +84,8 @@ describe('Test then() function', () => {
 
   it('then(onFulfilled, onRejected): then() without onRejected should be ignored', (done) => {
     const actualError = new Error('reject error');
-    const tp = new TP((resolve) => resolve());
-    
+    const tp = new TP(resolve => resolve());
+
     tp
       .then(() => {
         throw actualError;
@@ -104,15 +102,13 @@ describe('Test then() function', () => {
   it('if behind error had been handled, the next then() will be called success', (done) => {
     const actual = 'execute';
     const actualError = new Error('reject error');
-    const tp = new TP((resolve) => resolve());
+    const tp = new TP(resolve => resolve());
     tp
       .then(() => {
         throw actualError;
       })
       .then(noop, noop)
-      .then(() => {
-        return actual;
-      })
+      .then(() => actual)
       .then((val) => {
         expect(val).to.equal(actual);
         done();
@@ -122,7 +118,7 @@ describe('Test then() function', () => {
   it('then(onFulfilled, onRejected): Test throw an error in onRejected function', (done) => {
     const actualError1 = new Error('reject error 1');
     const actualError2 = new Error('reject error 2');
-    const tp = new TP((resolve) => resolve());
+    const tp = new TP(resolve => resolve());
     tp
       .then(() => {
         throw actualError1;
@@ -134,7 +130,7 @@ describe('Test then() function', () => {
       .then(noop, (error) => {
         expect(error).to.equal(actualError2);
         done();
-      })
+      });
   });
 });
 
@@ -150,41 +146,41 @@ describe('Test catch() function', () => {
 
   it('Test handle then(onFulfilled, onRejected) onFulfilled error', (done) => {
     const actualError = new Error('reject error');
-    const tp = new TP((resolve) => resolve(true));
+    const tp = new TP(resolve => resolve(true));
     tp
-    .then(() => {
-      throw actualError;
-    })
-    .catch((error) => {
-      expect(error).to.equal(actualError);
-      done();
-    });
+      .then(() => {
+        throw actualError;
+      })
+      .catch((error) => {
+        expect(error).to.equal(actualError);
+        done();
+      });
   });
 
   it('Test handle then(onResolve, onRejected) onRejected error', (done) => {
     const actualError = new Error('reject error');
     const tp = new TP((resolve, reject) => reject(true));
     tp
-    .then(noop, () => {
-      throw actualError;
-    })
-    .catch((error) => {
-      expect(error).to.equal(actualError);
-      done();
-    });
+      .then(noop, () => {
+        throw actualError;
+      })
+      .catch((error) => {
+        expect(error).to.equal(actualError);
+        done();
+      });
   });
-  
+
   it('catch() function should return \'this\' to ensure promise chain running success', (done) => {
     const error = new Error('reject error');
     const actual = true;
     const tp = new TP((resolve, reject) => reject(error));
     tp
-    .catch()
-    .then(() => actual)
-    .then((val) => {
-      expect(val).to.equal(actual);
-      done();
-    });
+      .catch()
+      .then(() => actual)
+      .then((val) => {
+        expect(val).to.equal(actual);
+        done();
+      });
   });
 
   it('If promise REJECT error handled by then() onRejected, catch function should be ignored', (done) => {
@@ -192,15 +188,14 @@ describe('Test catch() function', () => {
     const actual = true;
     const tp = new TP((resolve, reject) => reject(error));
     tp
-    .then(noop, noop)
-    .catch(() => { throw new Error('throw error at catch()') }) // should be ignored
-    .then(() => actual)
-    .then((val) => {
-      expect(val).to.equal(actual);
-      done();
-    });
+      .then(noop, noop)
+      .catch(() => { throw new Error('throw error at catch()'); }) // should be ignored
+      .then(() => actual)
+      .then((val) => {
+        expect(val).to.equal(actual);
+        done();
+      });
   });
-
 });
 
 describe('Test all() function', () => {
@@ -236,10 +231,10 @@ describe('Test all() function', () => {
         resolve(actualVal[1]);
       }, 2000);
     });
-    TP.all([a, b]).then(vals => {
+    TP.all([a, b]).then((vals) => {
       expect(vals).to.have.ordered.members(actualVal);
       done();
-    })
+    });
   }).timeout(4000);
 });
 
@@ -260,9 +255,9 @@ describe('Test race() function', () => {
         resolve(actualVal[1]);
       }, 2000);
     });
-    TP.race([a, b]).then(val => {
+    TP.race([a, b]).then((val) => {
       expect(val).to.equal(actualVal[0]).not.to.equal(actualVal[1]);
       done();
-    })
+    });
   }).timeout(4000);
 });

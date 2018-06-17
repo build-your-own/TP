@@ -5,6 +5,9 @@ node_js:
 cache: yarn
 before_install:
   npm install codecov -g
+scripts:
+  - npm test
+  - yarn run test:report
 notifications:
   email:
     - koubodehao@gmail.com

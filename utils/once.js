@@ -1,11 +1,12 @@
-function once(fn, context) { 
-  var result;
-  return function() { 
-      if (fn) {
-          result = fn.apply(context || this, arguments);
-          fn = null;
-      }
-      return result;
+/* eslint-disable */
+function once(func, context) {
+  let result;
+  return function () {
+    if (func) {
+      result = func.apply(context || this, arguments);
+      func = null;
+    }
+    return result;
   };
 }
 
