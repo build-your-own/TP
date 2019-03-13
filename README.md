@@ -7,7 +7,7 @@
 
 tiny + promise = TP
 
-## describe
+## Describe
 
 Implement the *Promise A+ Spec*. But `all()` and `race` are builted by myself and did not fit [the proposed spec](https://pawelgrzybek.com/whats-new-in-ecmascript-2017/).
 
